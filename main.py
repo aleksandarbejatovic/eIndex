@@ -105,19 +105,19 @@ async def delete_ispit(ispit: int):
 
 
 @app.put("/edit-predmet/")
-async def edit_predmet(predmet: str, edit: str): #edit -> sta editujemo u predmetu
+async def edit_predmet(predmet: str, edit: str): #edit -> sta editujemo u predmetu (ideja)
     hes.hes_predmeta[predmet].edit = sys.argv[1]
 
 
 @app.on_event("startup") #deserijalizacija
 async def startup_event():
-    infile = open(r"C:\\datoteka.dat", "rb")
+    infile = open(r"C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat", "rb")
     new_ob = pickle.load(infile)
     infile.close()
 
 
 @app.on_event("shutdown") #serijalizacija
 def shutdown_event():
-    outfile = open(r"C:\\datoteka.dat", "wb")
+    outfile = open(r"C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat", "wb")
     pickle.dump(hes, outfile)
     outfile.close()
