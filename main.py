@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 from fastapi import FastAPI, Query
 from typing import List, Optional
+from starlette.responses import Response
+from pathlib import Path
 
 import sys
 import datetime
@@ -48,76 +50,84 @@ class hesObject():
     hes_ispita = dict() # svi ispiti, za id ispita dobijam ispit
     hes_ispit_predmet = dict() #ispiti - predmeti, za dati ispit dobijamo predmet
 
-hes = hesObject()
+db = hesObject()
 
-@app.post("/dodaj-predmet/", response_model=PredmetOut)
+@app.post("/predmet/", response_model=PredmetOut)
 async def create_predmet(predmet: PredmetIn):
    #predmet.naziv = Query(min_length=3, default="Matematika") #da li funkcionise da je minimalna duzina svakog predmeta 3
-    hes.hes_predmeta[predmet.naziv] = predmet
+    db.hes_predmeta[predmet.naziv] = predmet
     return predmet
 
 
-@app.post("/dodaj-ispit/", response_model=IspitOut)
+@app.post("/ispit/", response_model=IspitOut, responses={ 404: {"opis": "Predmet ne postoji!"}}, response_class =Response)
 async def create_ispit(ispit: IspitIn, naziv_predmeta: str):
-    if hes.hes_predmeta[str]:
-        hes.hes_predmeta[naziv_predmeta].ispiti.add(ispit)
-        hes.hes_ispita[ispit.id] = ispit
-        hes.hes_ispit_predmet[ispit] = hes.hes_predmeta[naziv_predmeta]
+    if db.hes_predmeta[str]:
+        db.hes_predmeta[naziv_predmeta].ispiti.add(ispit)
+        db.hes_ispita[ispit.id] = ispit
+        db.hes_ispit_predmet[ispit] = db.hes_predmeta[naziv_predmeta]
     else:
-        print("Ne postoji dati predmet!")
+        return Response(status_code=404)
     return ispit
 
 
-@app.delete("/obrisi-predmet/")
+@app.delete("/predmet/{predmet_id}", responses={ 200: {"opis": "Predmet uspjesno obrisan!"},
+                                            404: {"opis": "Predmet nije pronadjen!"}},
+                                            response_class=Response)
 async def delete_predmet(predmet: str):
-    if hes.hes_predmeta[predmet]:
-        for ispit in hes.hes_predmeta[predmet].ispiti: #brisemo sve ispite za dati predmet
-            hes.hes_ispita[ispit.id] = None
-            hes.hes_ispit_predmet[ispit.id] = None
-        hes.hes_predmeta[predmet] = None
+    if db.hes_predmeta[predmet]:
+        for ispit in db.hes_predmeta[predmet].ispiti: #brisemo sve ispite za dati predmet
+            db.hes_ispita[ispit.id] = None
+            db.hes_ispit_predmet[ispit.id] = None
+        db.hes_predmeta[predmet] = None
+        return Response(status_code=200)
     else:
-        print("Ne postoji dati predmet!")
+        return Response(status_code=404)
 
 
-@app.delete("/obrisi-ispit-hard/") #hard delete ispita
+@app.delete("/ispit-hard/{ispit_id}", responses={ 200: {"opis": "Ispit uspjesno obrisan!"},
+                                              404: {"opis": "Ispit nije pronadjen!"}},
+                                              response_class=Response) #hard delete ispita
 async def delete_ispit(ispit: int):
-    if hes.hes_ispita[ispit]:
-        predmet = hes.hes_ispit_predmet[ispit] #na kojem predmetu se nalazi ispit, da ga obrisemo
-        hes.hes_predmeta[predmet].ispiti.remove(hes.hes_ispita[ispit]) #brisanje ispita sa datog predmeta
-        hes.hes_ispita[ispit] = None #brisanje ispita iz hesa svih ispita
-        hes.hes_ispit_predmet[ispit] = None #jer dati ispit vise ne postoji
+    if db.hes_ispita[ispit]:
+        predmet = db.hes_ispit_predmet[ispit] #na kojem predmetu se nalazi ispit, da ga obrisemo
+        db.hes_predmeta[predmet].ispiti.remove(db.hes_ispita[ispit]) #brisanje ispita sa datog predmeta
+        db.hes_ispita[ispit] = None #brisanje ispita iz hesa svih ispita
+        db.hes_ispit_predmet[ispit] = None #jer dati ispit vise ne postoji
+        return Response(status_code=200)
     else:
-        print("Ne postoji dati ispit!")
+        return Response(status_code=404)
 
 
-@app.delete("/obrisi-ispit-soft/") #soft delete ispita
+@app.delete("/ispit-soft/{ispit_id}", responses={200: {"opis": "Ispit uspjesno obrisan!"},
+                                              404: {"opis": "Ispit nije pronadjen!"}},
+                                              response_class=Response) #soft delete ispita
 async def delete_ispit(ispit: int):
-    if hes.hes_ispita[ispit] and hes.hes_ispita[ispit].vidljiv == True:
-        hes.hes_ispita[ispit].vidljiv = False
-        i = 0
-        while i < len(hes.hes_ispit_predmet[ispit].ispiti):
-            if(hes.hes_ispit_predmet[ispit].ispiti[i].id == ispit):
-                hes.hes_ispit_predmet[ispit].ispiti[i].vidljiv = False
-                i = len(hes.hes_ispit_predmet[ispit].ispiti)
-            i+=1
+    if db.hes_ispita[ispit] and db.hes_ispita[ispit].vidljiv == True:
+        db.hes_ispita[ispit].vidljiv = False
+        for dispit in db.hes_predmeta[ispit].ispiti:
+            if dispit.id == ispit:
+                dispit.vidljiv = False
+        return Response(status_code=200)
     else:
-        print("Ispit ne postoji ili je obrisan!")
+        return Response(status_code=404)
 
 
-@app.put("/edit-predmet/")
+@app.patch("/predmet/{predmet_id}")
 async def edit_predmet(predmet: str, edit: str): #edit -> sta editujemo u predmetu (ideja)
-    hes.hes_predmeta[predmet].edit = sys.argv[1]
+    db.hes_predmeta[predmet].edit = sys.argv[1]
 
 
 @app.on_event("startup") #deserijalizacija
 async def startup_event():
-    infile = open(r"C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat", "rb")
+    correct_path = Path("C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat") #prevodjenje putanje u putanju za odgovarajuci
+    infile = open(correct_path, "rb")                                         #operativni sistem
     new_ob = pickle.load(infile)
     infile.close()
 
 
 @app.on_event("shutdown") #serijalizacija
 def shutdown_event():
-    outfile = open(r"C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat", "wb")
-    pickle.dump(hes, outfile)
+    correct_path = Path("C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat")
+    outfile = open(correct_path, "wb")
+    pickle.dump(db, outfile)
     outfile.close()
