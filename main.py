@@ -11,10 +11,10 @@ import pickle
 
 app = FastAPI()
 
-identification = 0
+identification = 0 #potrebno uvecati nakon svakog novog ispita
 
 class IspitIn(BaseModel):
-    id: identification #identifikacioni broj ispita jedinstven
+    id: int = identification #identifikacioni broj ispita, potrebno da bude jedinstven
     vrijeme: datetime.date #potrebno zamjeniti tip podatka, potrebno da bude tip date
     mjesto: str
     isPolozen: bool = False
@@ -56,21 +56,20 @@ db = hesObject()
 
 @app.get("/predmet/") #da li kroz get treba unijeti sve atribute i vratiti objekat IspitIn ili nesto drugo?
 async def read_predmet(naziv: str, profesor: str, asistent: str, predavanje_mjesto: str):
-    IspitIn.naziv=naziv
-    IspitIn.profesor=profesor
-    IspitIn.asistent=asistent
-    IspitIn.predavanje_mjesto=predavanje_mjesto
-    return IspitIn
+    PredmetIn.naziv=naziv
+    PredmetIn.profesor=profesor
+    PredmetIn.asistent=asistent
+    PredmetIn.predavanje_mjesto=predavanje_mjesto
+    return PredmetIn
 
 
 @app.post("/predmet/", response_model=PredmetOut)
 async def create_predmet(predmet: PredmetIn):
-   #predmet.naziv = Query(min_length=3, default="Matematika") #da li funkcionise da je minimalna duzina svakog predmeta 3
     db.hes_predmeta[predmet.naziv] = predmet
     return predmet
 
 
-@app.post("/ispit/", response_model=IspitOut, responses={ 404: {"opis": "Predmet ne postoji!"}}, response_class =Response)
+@app.post("/ispit/", response_model=IspitOut, responses={ 404: {"opis": "Predmet ne postoji!"}}, response_class=Response)
 async def create_ispit(ispit: IspitIn, naziv_predmeta: str):
     if db.hes_predmeta[str]:
         db.hes_predmeta[naziv_predmeta].ispiti.add(ispit)
@@ -82,8 +81,8 @@ async def create_ispit(ispit: IspitIn, naziv_predmeta: str):
 
 
 @app.delete("/predmet/{predmet_id}", responses={ 200: {"opis": "Predmet uspjesno obrisan!"},
-                                            404: {"opis": "Predmet nije pronadjen!"}},
-                                            response_class=Response)
+                                                 404: {"opis": "Predmet nije pronadjen!"}},
+                                                 response_class=Response)
 async def delete_predmet(predmet: str):
     if db.hes_predmeta[predmet]:
         for ispit in db.hes_predmeta[predmet].ispiti: #brisemo sve ispite za dati predmet
@@ -110,8 +109,8 @@ async def delete_ispit(ispit: int):
 
 
 @app.delete("/ispit-soft/{ispit_id}", responses={200: {"opis": "Ispit uspjesno obrisan!"},
-                                              404: {"opis": "Ispit nije pronadjen!"}},
-                                              response_class=Response) #soft delete ispita
+                                                 404: {"opis": "Ispit nije pronadjen!"}},
+                                                 response_class=Response) #soft delete ispita
 async def delete_ispit(ispit: int):
     if db.hes_ispita[ispit] and db.hes_ispita[ispit].vidljiv == True:
         db.hes_ispita[ispit].vidljiv = False
@@ -128,17 +127,17 @@ async def edit_predmet(predmet: str, edit: str): #edit -> sta editujemo u predme
     db.hes_predmeta[predmet].edit = sys.argv[1]
 
 
-@app.on_event("startup") #deserijalizacija
-async def startup_event():
-    correct_path = Path("C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat") #prevodjenje putanje u putanju za odgovarajuci
-    with open(correct_path, "rb") as in_file:                                 #operativni sistem
-        data = pickle.load(in_file)
-    in_file.close()
+#@app.on_event("startup") #deserijalizacija
+#async def startup_event():
+#    correct_path = Path("C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat") #prevodjenje putanje u putanju za odgovarajuci
+#    with open(correct_path, "rb") as in_file:                                 #operativni sistem
+#        data = pickle.load(in_file)
+#    in_file.close()
 
 
-@app.on_event("shutdown") #serijalizacija
-def shutdown_event():
-    correct_path = Path("C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat") #prevodjenje putanje u putanju za odgovarajuci
-    with open(correct_path, "wb") as out_file:                                #operativni sistem
-        pickle.dump(db, out_file)
-    out_file.close()
+#@app.on_event("shutdown") #serijalizacija
+#def shutdown_event():
+#    correct_path = Path("C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat") #prevodjenje putanje u putanju za odgovarajuci
+#    with open(correct_path, "wb") as out_file:                                #operativni sistem
+#        pickle.dump(db, out_file)
+#    out_file.close()
