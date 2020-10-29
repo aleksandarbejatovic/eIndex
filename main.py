@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from fastapi import FastAPI, Query
+from fastapi import FastAPI
 from typing import List, Optional
 from starlette.responses import Response
 from pathlib import Path
@@ -11,10 +11,11 @@ import pickle
 
 app = FastAPI()
 
+identification = 0
 
 class IspitIn(BaseModel):
-    id: int #redni broj ispita u datoj skolskoj godini 1,2,3,4,5....
-    vrijeme: datetime.date
+    id: identification #identifikacioni broj ispita jedinstven
+    vrijeme: datetime.date #potrebno zamjeniti tip podatka, potrebno da bude tip date
     mjesto: str
     isPolozen: bool = False
     isPrijavljen: bool = False
@@ -46,11 +47,21 @@ class PredmetOut(BaseModel):
     ispiti: IspitOut
 
 class hesObject():
-    hes_predmeta = dict() # svi predmeti globalna promjenjiva, za naziv predmeta dobijam predmet
-    hes_ispita = dict() # svi ispiti, za id ispita dobijam ispit
+    hes_predmeta = dict() #svi predmeti globalna promjenjiva, za naziv predmeta dobijam predmet
+    hes_ispita = dict() #svi ispiti, za id ispita dobijam ispit
     hes_ispit_predmet = dict() #ispiti - predmeti, za dati ispit dobijamo predmet
 
 db = hesObject()
+
+
+@app.get("/predmet/") #da li kroz get treba unijeti sve atribute i vratiti objekat IspitIn ili nesto drugo?
+async def read_predmet(naziv: str, profesor: str, asistent: str, predavanje_mjesto: str):
+    IspitIn.naziv=naziv
+    IspitIn.profesor=profesor
+    IspitIn.asistent=asistent
+    IspitIn.predavanje_mjesto=predavanje_mjesto
+    return IspitIn
+
 
 @app.post("/predmet/", response_model=PredmetOut)
 async def create_predmet(predmet: PredmetIn):
@@ -120,14 +131,14 @@ async def edit_predmet(predmet: str, edit: str): #edit -> sta editujemo u predme
 @app.on_event("startup") #deserijalizacija
 async def startup_event():
     correct_path = Path("C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat") #prevodjenje putanje u putanju za odgovarajuci
-    infile = open(correct_path, "rb")                                         #operativni sistem
-    new_ob = pickle.load(infile)
-    infile.close()
+    with open(correct_path, "rb") as in_file:                                 #operativni sistem
+        data = pickle.load(in_file)
+    in_file.close()
 
 
 @app.on_event("shutdown") #serijalizacija
 def shutdown_event():
-    correct_path = Path("C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat")
-    outfile = open(correct_path, "wb")
-    pickle.dump(db, outfile)
-    outfile.close()
+    correct_path = Path("C:/Users/aleks/PycharmProjects/eIndex/datoteka.dat") #prevodjenje putanje u putanju za odgovarajuci
+    with open(correct_path, "wb") as out_file:                                #operativni sistem
+        pickle.dump(db, out_file)
+    out_file.close()
