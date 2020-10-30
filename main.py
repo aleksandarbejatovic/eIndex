@@ -15,7 +15,7 @@ identification = 0 #potrebno uvecati nakon svakog novog ispita
 
 class IspitIn(BaseModel):
     id: int = identification #identifikacioni broj ispita, potrebno da bude jedinstven
-    vrijeme: datetime.date #potrebno zamjeniti tip podatka, potrebno da bude tip date
+ #   vrijeme: datetime.date #potrebno zamjeniti tip podatka, potrebno da bude tip date
     mjesto: str
     isPolozen: bool = False
     isPrijavljen: bool = False
@@ -55,12 +55,9 @@ db = hesObject()
 
 
 @app.get("/predmet/") #da li kroz get treba unijeti sve atribute i vratiti objekat IspitIn ili nesto drugo?
-async def read_predmet(naziv: str, profesor: str, asistent: str, predavanje_mjesto: str):
-    PredmetIn.naziv=naziv
-    PredmetIn.profesor=profesor
-    PredmetIn.asistent=asistent
-    PredmetIn.predavanje_mjesto=predavanje_mjesto
-    return PredmetIn
+async def read_predmet(naziv: str, profesor: str, asistent: str, predavanje_mjesto: str, vjezbe_mjesto: str, lab_mjesto: str, ispiti: IspitIn):
+    predmet = PredmetIn(naziv=naziv, profesor=profesor,asistent=asistent,predavanje_mjesto=predavanje_mjesto,vjezbe_mjesto=vjezbe_mjesto, lab_mjesto=lab_mjesto, ispiti=ispiti)
+    return predmet
 
 
 @app.post("/predmet/", response_model=PredmetOut)
@@ -95,8 +92,8 @@ async def delete_predmet(predmet: str):
 
 
 @app.delete("/ispit-hard/{ispit_id}", responses={ 200: {"opis": "Ispit uspjesno obrisan!"},
-                                              404: {"opis": "Ispit nije pronadjen!"}},
-                                              response_class=Response) #hard delete ispita
+                                                  404: {"opis": "Ispit nije pronadjen!"}},
+                                                  response_class=Response) #hard delete ispita
 async def delete_ispit(ispit: int):
     if db.hes_ispita[ispit]:
         predmet = db.hes_ispit_predmet[ispit] #na kojem predmetu se nalazi ispit, da ga obrisemo
